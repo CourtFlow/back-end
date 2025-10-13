@@ -17,7 +17,20 @@ const mongoSanitize = require("express-mongo-sanitize");
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(mongoSanitize());
+//app.use(mongoSanitize());
+
+app.use((req, res, next) => {
+    if (req.body) mongoSanitize.sanitize(req.body);
+    if (req.params) mongoSanitize.sanitize(req.params);
+  
+    // Express 5: req.query is a getter, so we sanitize a copy
+    if (req.query) {
+      const sanitizedQuery = mongoSanitize.sanitize({ ...req.query });
+      Object.assign(req.query, sanitizedQuery);
+    }
+  
+    next();
+});
 
 app.use(
   cors({
