@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+service QueueService {
+  rpc EnterCourtQueue (QueueEntry) returns (QueueResponse) {}
+  rpc LeaveCourtQueue (LeaveQueueRequest) returns (QueueResponse) {}
+  rpc GetQueueStatusForCourt (CourtId) returns (QueueStatus) {}
+  rpc GetAllQueues (Empty) returns (QueueList) {}
+}
+
+message Empty {}
+
+message QueueEntry {
+  string courtId = 1;
+  string userId = 2;
+  string userName = 3;
+  string teamId = 4; // Optional: if booking as a team
+}
+
+message LeaveQueueRequest {
+  string courtId = 1;
+  string userId = 2;
+}
+
+message QueueResponse {
+  bool success = 1;
+  string message = 2;
+  int32 position = 3; // Position in queue
+  int32 estimatedWaitTime = 4; // in minutes
+}
+
+message CourtId {
+  string id = 1;
+}
+
+message QueueStatus {
+  string courtId = 1;
+  string courtName = 2;
+  int32 queueLength = 3;
+  repeated QueueUser users = 4;
+  int32 averageWaitTime = 5; // in minutes
+}
+
+message QueueUser {
+  string userId = 1;
+  string userName = 2;
+  string teamId = 3;
+  int32 position = 4;
+  string joinedAt = 5;
+}
+
+message QueueList {
+  repeated QueueStatus queues = 1;
+}

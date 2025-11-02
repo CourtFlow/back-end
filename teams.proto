@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+service TeamService {
+  rpc CreateTeam (Team) returns (Team) {}
+  rpc DeleteTeam (TeamId) returns (Empty) {}
+  rpc JoinTeam (JoinTeamRequest) returns (TeamResponse) {}
+  rpc LeaveTeam (LeaveTeamRequest) returns (TeamResponse) {}
+  rpc GetTeamDetails (TeamId) returns (Team) {}
+  rpc GetAllTeams (Empty) returns (TeamList) {}
+}
+
+message Empty {}
+
+message Team {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string members = 4;
+  string createdBy = 5;
+  string createdAt = 6;
+}
+
+message TeamList {
+  repeated Team teams = 1;
+}
+
+message TeamId {
+  string id = 1;
+}
+
+message JoinTeamRequest {
+  string teamId = 1;
+  string userId = 2;
+  string userName = 3;
+}
+
+message LeaveTeamRequest {
+  string teamId = 1;
+  string userId = 2;
+}
+
+message TeamResponse {
+  bool success = 1;
+  string message = 2;
+  Team team = 3;
+}

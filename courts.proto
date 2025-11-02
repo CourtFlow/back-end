@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+service CourtService {
+  rpc CreateCourt (Court) returns (Court) {}
+  rpc SearchCourtsByName (SearchRequest) returns (CourtList) {}
+  rpc SearchCourtsByLocation (SearchRequest) returns (CourtList) {}
+  rpc FilterCourts (FilterRequest) returns (CourtList) {}
+  rpc GetCourtDetails (CourtId) returns (Court) {}
+  rpc GetAllCourts (Empty) returns (CourtList) {}
+  rpc DeleteCourt (CourtId) returns (Empty) {}
+}
+
+message Empty {}
+
+message Court {
+  string id = 1;
+  string name = 2;
+  string location = 3;
+  string type = 4; // Basketball, Football, Tennis, etc.
+  int32 capacity = 5;
+  double pricePerHour = 6;
+  string description = 7;
+  repeated string facilities = 8; // Parking, Lights, Changing rooms, etc.
+  bool available = 9;
+  string createdBy = 10;
+  string createdAt = 11;
+}
+
+message CourtList {
+  repeated Court courts = 1;
+}
+
+message CourtId {
+  string id = 1;
+}
+
+message SearchRequest {
+  string query = 1;
+}
+
+message FilterRequest {
+  string type = 1; // Court type filter
+  int32 minCapacity = 2;
+  int32 maxCapacity = 3;
+  double maxPrice = 4;
+  bool availableOnly = 5;
+}
