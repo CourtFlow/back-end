@@ -5,6 +5,7 @@ require("dotenv").config({ path: path.join(__dirname, "config.env") });
 
 const express = require("express");
 const bodyParser = require("body-parser");
+const cors = require("cors");
 
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
@@ -57,6 +58,8 @@ app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+// Allow cross-origin requests from the frontend (e.g., http://localhost:3000)
+app.use(cors({ origin: true, credentials: true }));
 
 // Home page - Landing page with all services
 app.get("/", (req, res) => {
@@ -265,6 +268,14 @@ app.post("/queues/leave", (req, res) => {
     }
     res.redirect("/queues");
   });
+});
+
+// Start HTTP server (gateway for courts/teams/queues APIs)
+const HTTP_PORT = process.env.CLIENT_HTTP_PORT || process.env.API_GATEWAY_PORT || 3003;
+app.listen(HTTP_PORT, () => {
+  console.log(`HTTP API gateway listening on http://localhost:${HTTP_PORT}`);
+  console.log(`- Courts API:    GET http://localhost:${HTTP_PORT}/api/courts`);
+  console.log(`- Court details: GET http://localhost:${HTTP_PORT}/api/courts/:id`);
 });
 
 
