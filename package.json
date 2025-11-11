@@ -1,9 +1,13 @@
 {
   "name": "back-end",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "server/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "team-server": "node server/server.js",
+    "court-server": "node server/court-server.js",
+    "queue-server": "node server/queue-server.js",
+    "client": "node index.js",
+    "dev": "node server/server.js & node server/court-server.js & node server/queue-server.js & node index.js"
   },
   "author": "",
   "license": "ISC",

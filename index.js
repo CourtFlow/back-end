@@ -1,6 +1,7 @@
 // client/index.js
 const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "..", "config.env") });
+// Load env from back-end/config.env (this file sits in back-end/)
+require("dotenv").config({ path: path.join(__dirname, "config.env") });
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -9,7 +10,7 @@ const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 
 // Load Team proto
-const TEAM_PROTO_PATH = path.join(__dirname, "../back-end", "teams.proto");
+const TEAM_PROTO_PATH = path.join(__dirname, "teams.proto");
 const teamPackageDef = protoLoader.loadSync(TEAM_PROTO_PATH, {
   keepCase: true,
   longs: String,
@@ -20,7 +21,7 @@ const teamPackageDef = protoLoader.loadSync(TEAM_PROTO_PATH, {
 const teamProto = grpc.loadPackageDefinition(teamPackageDef);
 
 // Load Court proto
-const COURT_PROTO_PATH = path.join(__dirname, "../back-end", "courts.proto");
+const COURT_PROTO_PATH = path.join(__dirname, "courts.proto");
 const courtPackageDef = protoLoader.loadSync(COURT_PROTO_PATH, {
   keepCase: true,
   longs: String,
@@ -31,7 +32,7 @@ const courtPackageDef = protoLoader.loadSync(COURT_PROTO_PATH, {
 const courtProto = grpc.loadPackageDefinition(courtPackageDef);
 
 // Load Queue proto
-const QUEUE_PROTO_PATH = path.join(__dirname, "../back-end", "queues.proto");
+const QUEUE_PROTO_PATH = path.join(__dirname, "queues.proto");
 const queuePackageDef = protoLoader.loadSync(QUEUE_PROTO_PATH, {
   keepCase: true,
   longs: String,
@@ -100,6 +101,28 @@ app.get("/courts", (req, res) => {
       res.render("courts", { results: resp.courts || [], searchQuery, searchType });
     });
   }
+});
+
+// JSON API: list all courts
+app.get("/api/courts", (req, res) => {
+  courtClient.getAllCourts({}, (err, resp) => {
+    if (err) {
+      console.error("getAllCourts error:", err);
+      return res.status(500).json({ success: false, error: err.details || String(err) });
+    }
+    return res.json({ success: true, data: resp.courts || [] });
+  });
+});
+
+// JSON API: court details
+app.get("/api/courts/:id", (req, res) => {
+  courtClient.getCourtDetails({ id: req.params.id }, (err, court) => {
+    if (err) {
+      const code = err.code === 5 ? 404 : 500; // NOT_FOUND => 5 in grpc-js
+      return res.status(code).json({ success: false, error: err.details || String(err) });
+    }
+    return res.json({ success: true, data: court });
+  });
 });
 
 // Queues page - list all queues
