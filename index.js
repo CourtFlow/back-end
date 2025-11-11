@@ -267,11 +267,4 @@ app.post("/queues/leave", (req, res) => {
   });
 });
 
-// Start server
-const WEB_PORT = process.env.WEB_PORT || 3003;
-app.listen(WEB_PORT, () => {
-  console.log(`🌐 Web client running at http://localhost:${WEB_PORT}`);
-  console.log(`📡 Team Service: ${TEAM_GRPC_TARGET}`);
-  console.log(`📡 Court Service: ${COURT_GRPC_TARGET}`);
-  console.log(`📡 Queue Service: ${QUEUE_GRPC_TARGET}`);
-});
+
