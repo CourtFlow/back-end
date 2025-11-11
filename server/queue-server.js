@@ -5,6 +5,19 @@ require("dotenv").config({ path: path.join(__dirname, "..", "config.env") });
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const mongoose = require("mongoose");
+let _publishNotification = null;
+function getPublisher() {
+  if (_publishNotification !== null) return _publishNotification;
+  try {
+    // Lazy-load to avoid crashing if amqplib isn't installed yet
+    const { publishNotification } = require("../utils/rabbitmq");
+    _publishNotification = publishNotification;
+  } catch (e) {
+    console.warn("RabbitMQ publisher unavailable (amqplib not installed?)");
+    _publishNotification = undefined;
+  }
+  return _publishNotification;
+}
 
 // ==== 1) Connect Mongo ====
 const DB = process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/grpcdemo";
@@ -65,7 +78,13 @@ const courtClient = new courtProto.CourtService(COURT_GRPC_TARGET, grpc.credenti
 // Mock Notification Service (will be implemented later)
 function sendNotification(userId, message) {
   console.log(`📢 Notification to ${userId}: ${message}`);
-  // In the future, this will call Notification Service
+  // Also emit to RabbitMQ queue for async processing
+  try {
+    const pub = getPublisher();
+    if (pub) pub({ type: "NOTIFY", userId, message, timestamp: new Date().toISOString() });
+  } catch (e) {
+    console.error("RabbitMQ publish failed:", e?.message || e);
+  }
 }
 
 // ==== 4) gRPC Server impl ====
@@ -170,6 +189,21 @@ server.addService(queueProto.QueueService.service, {
 
         // Send notification
         sendNotification(userId, `You joined the queue for ${court.name} at position ${position}`);
+        try {
+          const pub = getPublisher();
+          if (pub) pub({
+            type: "JOIN_QUEUE",
+            userId,
+            userName,
+            courtId,
+            courtName: court.name,
+            position,
+            estimatedWaitMins: position * 30,
+            timestamp: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error("RabbitMQ publish failed (JOIN_QUEUE):", e?.message || e);
+        }
 
         callback(null, {
           success: true,
@@ -214,6 +248,19 @@ server.addService(queueProto.QueueService.service, {
 
       // Send notification
       sendNotification(userId, `You left the queue for ${queue.courtName}`);
+      try {
+        const pub = getPublisher();
+        if (pub) pub({
+          type: "LEAVE_QUEUE",
+          userId,
+          userName: userId,
+          courtId,
+          courtName: queue.courtName,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error("RabbitMQ publish failed (LEAVE_QUEUE):", e?.message || e);
+      }
 
       callback(null, {
         success: true,

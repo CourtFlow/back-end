@@ -6,6 +6,7 @@ require("dotenv").config({ path: path.join(__dirname, "config.env") });
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const amqp = require("amqplib");
 
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
@@ -126,6 +127,80 @@ app.get("/api/courts/:id", (req, res) => {
     }
     return res.json({ success: true, data: court });
   });
+});
+
+// JSON API: list all queues
+app.get("/api/queues", (req, res) => {
+  queueClient.getAllQueues({}, (err, resp) => {
+    if (err) {
+      console.error("getAllQueues error:", err);
+      return res.status(500).json({ success: false, error: err.details || String(err) });
+    }
+    return res.json({ success: true, data: resp.queues || [] });
+  });
+});
+
+// JSON API: queue status for a court
+app.get("/api/queues/:id", (req, res) => {
+  queueClient.getQueueStatusForCourt({ id: req.params.id }, (err, status) => {
+    if (err) {
+      const code = err.code === 5 ? 404 : 500;
+      return res.status(code).json({ success: false, error: err.details || String(err) });
+    }
+    return res.json({ success: true, data: status });
+  });
+});
+
+// SSE: notifications stream (broadcast)
+app.get("/api/notifications/stream", async (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+  res.write(":ok\n\n"); // comment line to establish stream
+
+  const RMQ_URL = process.env.RABBITMQ_URL || "amqp://localhost";
+  const EXCHANGE = process.env.RABBITMQ_EXCHANGE || "notifications"; // fanout
+
+  let closed = false;
+  let conn = null;
+  let ch = null;
+  try {
+    conn = await amqp.connect(RMQ_URL);
+    ch = await conn.createChannel();
+    await ch.assertExchange(EXCHANGE, "fanout", { durable: false });
+    const q = await ch.assertQueue("", { exclusive: true });
+    await ch.bindQueue(q.queue, EXCHANGE, "");
+
+    // keepalive ping every 25s
+    const ping = setInterval(() => {
+      try { res.write("event: ping\ndata: {}\n\n"); } catch (_) {}
+    }, 25000);
+
+    const { consumerTag } = await ch.consume(q.queue, (msg) => {
+      if (!msg || closed) return;
+      try {
+        const payload = msg.content.toString();
+        res.write(`data: ${payload}\n\n`);
+      } catch (e) {
+        // write raw
+        res.write(`data: ${JSON.stringify({ raw: msg.content.toString() })}\n\n`);
+      }
+    }, { noAck: true });
+
+    req.on("close", async () => {
+      closed = true;
+      clearInterval(ping);
+      try { if (ch && consumerTag) await ch.cancel(consumerTag); } catch (_) {}
+      try { if (ch) await ch.close(); } catch (_) {}
+      try { if (conn) await conn.close(); } catch (_) {}
+    });
+  } catch (e) {
+    res.write(`event: error\ndata: ${JSON.stringify({ error: String(e.message || e) })}\n\n`);
+    try { if (ch) await ch.close(); } catch (_) {}
+    try { if (conn) await conn.close(); } catch (_) {}
+    res.end();
+  }
 });
 
 // Queues page - list all queues

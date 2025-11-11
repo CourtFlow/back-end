@@ -7,6 +7,7 @@
     "court-server": "node server/court-server.js",
     "queue-server": "node server/queue-server.js",
     "client": "node index.js",
+    "worker": "node notification-worker.js",
     "dev": "node server/server.js & node server/court-server.js & node server/queue-server.js & node index.js"
   },
   "author": "",
@@ -14,6 +15,7 @@
   "description": "",
   "dependencies": {
     "@grpc/grpc-js": "^1.14.1",
+    "amqplib": "^0.10.9",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
